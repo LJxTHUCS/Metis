@@ -413,6 +413,31 @@ static int setup_nova(const char *devname, const char *basepath, const size_t si
     ret = umount2(basepath, 0);    
     return ret;
 }
+
+static int setup_lwext4(const char *devname, const char *basepath, const size_t size_kb)
+{
+    int ret;
+    char cmdbuf[PATH_MAX];
+    // Expected >= 256 KiB
+    ret = check_device(devname, 256);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Cannot %s because %s is bad or not ready.\n",
+                __FUNCTION__, devname);
+        return ret;
+    }
+    // fill the device with zeros
+    snprintf(cmdbuf, PATH_MAX,
+             "dd if=/dev/zero of=%s bs=%zu count=1",
+             devname, size_kb * 1024);
+    execute_cmd(cmdbuf);
+    // format the device with the specified file system
+    snprintf(cmdbuf, PATH_MAX, "lwext4-mkfs --verbose -i %s -e 4", devname);
+    execute_cmd(cmdbuf);
+
+    return 0;
+}
+
 void setup_filesystems()
 {
     int ret;
@@ -446,6 +471,10 @@ void setup_filesystems()
          else if (strcmp(get_fslist()[i], "nova") == 0)
         {
             ret = setup_nova(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
+        }
+         else if (strcmp(get_fslist()[i], "lwext4") == 0)
+        {
+            ret = setup_lwext4(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
         }
         // TODO: we need to consider VeriFS1 and VeriFS2 separately here
         else if (is_verifs(get_fslist()[i]))

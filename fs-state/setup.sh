@@ -46,6 +46,7 @@ FS_DEV_MAP+=( ["btrfs"]="ram" ["ext2"]="ram" ["ext4"]="ram" ["f2fs"]="ram" )
 FS_DEV_MAP+=( ["jffs2"]="mtdblock" ["ramfs"]="" ["tmpfs"]="" )
 FS_DEV_MAP+=( ["verifs1"]="" ["verifs2"]="" ["xfs"]="ram" ["nilfs2"]="ram" ["jfs"]="ram")
 FS_DEV_MAP+=( ["nova"]="pmem" )
+FS_DEV_MAP+=( ["lwext4"]="ram" )
 
 mount_all() {
     SWARM_ID=$1;
@@ -56,8 +57,10 @@ mount_all() {
     fi
     for i in $(seq 0 $(($n_fs-1))); do
         fs=${FSLIST[$i]};
-        DEVICE=${DEVLIST[$i]};
-        runcmd mount -t $fs $DEVICE /mnt/test-$fs-i$i-s$SWARM_ID;
+        if [ $fs -ne "lwext4" ]; then
+            DEVICE=${DEVLIST[$i]};
+            runcmd mount -t $fs $DEVICE /mnt/test-$fs-i$i-s$SWARM_ID;
+        fi
     done
 }
 
@@ -201,7 +204,10 @@ generic_cleanup() {
         done
 
         for fs in ${FSLIST[@]}; do
-            unset_$fs;
+            # Do not need to unset VeriFS
+            if [ "${fs:0:${VERI_PREFIX_LEN}}" != "$VERIFS_PREFIX" ]; then
+                unset_$fs;
+            fi
         done
     fi
 
@@ -396,6 +402,18 @@ unset_nova() {
     :
 }
 
+setup_lwext4() {
+    DEVFILE="$1";
+
+    devsize=$(runcmd verify_device $DEVFILE lwext4 $(expr 16 \* 1024 \* 1024))
+    runcmd dd if=/dev/zero of=$DEVFILE bs=1k count=$(expr $devsize / 1024)
+    runcmd lwext4-mkfs -i $DEVFILE -e 4
+}
+
+unset_lwext4() {
+    :
+}
+
 # Setup mount points and each file system
 for i in $(seq 0 $(($n_fs-1))); do
     # Run individual file system setup scripts defined above
@@ -450,7 +468,7 @@ if [ "$SETUP_ONLY" != "1" ]; then
         export MCFS_FSLIST$SWARM_ID="$MCFSLIST"
         ./pan -K $SWARM_ID 2>error.log > output.log
     else
-        ./pan -K $SWARM_ID:$MCFSLIST 2>error.log > output.log
+        ./pan -m10000 -K $SWARM_ID:$MCFSLIST 2>error.log > output.log
     fi
 
     # By default we don't want to clean up the file system for 

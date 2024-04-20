@@ -73,6 +73,14 @@ void mountall()
         if (is_verifs(get_fslist()[i]))
             continue;
         /* mount(source, target, fstype, mountflags, option_str) */
+        if (is_lwext4(get_fslist()[i])) {
+            char cmdbuf[PATH_MAX];
+            snprintf(cmdbuf, PATH_MAX, "mount %s %s", get_devlist()[i], get_basepaths()[i]);
+            ret = execute_cmd_status(cmdbuf);
+            // Chmod of root (default mod of lwext4 root is 777)
+            snprintf(cmdbuf, PATH_MAX, "chmod 755 %s", get_basepaths()[i]);
+            ret = execute_cmd_status(cmdbuf);
+        }
         else if(is_nova(get_fslist()[i])) {
             char cmdbuf[PATH_MAX];
             snprintf(cmdbuf, PATH_MAX, "mount -t NOVA -o noatime %s %s", get_devlist()[i], get_basepaths()[i]);

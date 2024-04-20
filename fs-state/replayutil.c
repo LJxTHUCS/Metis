@@ -176,6 +176,11 @@ void replayer_init(vector_t states)
 
 static void do_checkpoint(const char *devpath, char **bufptr)
 {
+	printf("devpath: %s\n", devpath);
+	if (!devpath) {
+		// Verifs
+		return;
+	}
 	int devfd = open(devpath, O_RDWR);
 	assert(devfd >= 0);
 	size_t fs_size = fsize(devfd);

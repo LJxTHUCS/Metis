@@ -52,6 +52,7 @@
 #define XFS_NAME            "xfs"
 #define VERIFS1_NAME        "verifs1"
 #define NILFS2_NAME         "nilfs2"
+#define LWEXT4_NAME         "lwext4"
 #define VERIFS_PREFIX_LEN   (sizeof(VERIFS_PREFIX) - 1)
 
 static inline bool is_verifs(const char *fsname)
@@ -62,6 +63,11 @@ static inline bool is_verifs(const char *fsname)
 static inline bool is_nova(const char *fsname)
 {
     return strcmp(fsname, NOVA_NAME) == 0;
+}
+
+static inline bool is_lwext4(const char *fsname)
+{
+    return strcmp(fsname, LWEXT4_NAME) == 0;
 }
 
 void setup_filesystems();
