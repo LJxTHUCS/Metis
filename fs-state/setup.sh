@@ -461,14 +461,15 @@ fi
 # Run test program
 if [ "$SETUP_ONLY" != "1" ]; then
     runcmd make CFLAGS=$_CFLAGS;
+    mv *.o *.a pan* bin;
     echo 'Running file system checker...';
     echo 'Please check stdout in output.log, stderr in error.log';
     # Set environment variable MCFS_FSLIST for MCFS C Sources
     if [ "$USE_ENV_VAR" = "1" ]; then
         export MCFS_FSLIST$SWARM_ID="$MCFSLIST"
-        ./pan -K $SWARM_ID 2>error.log > output.log
+        ./bin/pan -K $SWARM_ID 2>./log/error.log > ./log/output.log
     else
-        ./pan -m10000 -K $SWARM_ID:$MCFSLIST 2>error.log > output.log
+        ./bin/pan -m10000 -K $SWARM_ID:$MCFSLIST 2>./log/error.log > ./log/output.log
     fi
 
     # By default we don't want to clean up the file system for 

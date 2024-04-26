@@ -14,6 +14,7 @@
 #include "custom_heap.h"
 #include <sys/wait.h>
 #include <sys/vfs.h>
+#include <unistd.h>
 
 #define IS_CHECKPOINT true
 #define IS_SNAPSHOT false
@@ -825,6 +826,7 @@ static void main_hook(int argc, char **argv)
 
 void __attribute__((constructor)) init()
 {
+    chdir("./log");
     fsinfos = calloc(get_n_fs(), sizeof(struct fs_stat));
     if (!fsinfos)
         mem_alloc_err();

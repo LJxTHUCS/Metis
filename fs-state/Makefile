@@ -62,3 +62,5 @@ min_repro: min_repro.c replayutil.o init_globals.o setup.c mount.c common-libs
 clean:
 	rm -rf test test.txt pan* *.log *.csv *.o *.a *.img absfs *.trail script* swarm_done* .pml_tmp mcfs-main.pml.swarm \
 	rm -rf /mnt/test-*/test*
+	rm -f bin/* log/*
+

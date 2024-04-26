@@ -10,6 +10,7 @@
  */
 
 #include "init_globals.h"
+#include <unistd.h>
 
 globals_t *globals_t_p;
 bool *fs_frozen;
@@ -695,6 +696,7 @@ static void dump_file_dir_pools()
 void __attribute__((constructor)) globals_init(int argc, char *argv[])
 {
     int ret = -1;
+    chdir("./log");
     /* Read command-line option and decide CLI or ENV */
     opt_ret = cli_or_env_args(argc, argv);
     if (opt_ret < 0) {
