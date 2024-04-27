@@ -72,13 +72,15 @@ void mountall()
         /* Skip verifs */
         if (is_verifs(get_fslist()[i]))
             continue;
+        /* Skip FUSE filesystem*/
+        if (is_fuse_lwext4(get_fslist()[i])) {
+            printf("Skip mounting FUSE filesystem\n");
+            continue;
+        }
         /* mount(source, target, fstype, mountflags, option_str) */
         if (is_lwext4(get_fslist()[i])) {
             char cmdbuf[PATH_MAX];
             snprintf(cmdbuf, PATH_MAX, "mount %s %s", get_devlist()[i], get_basepaths()[i]);
-            ret = execute_cmd_status(cmdbuf);
-            // Chmod of root (default mod of lwext4 root is 777)
-            snprintf(cmdbuf, PATH_MAX, "chmod 755 %s", get_basepaths()[i]);
             ret = execute_cmd_status(cmdbuf);
         }
         else if(is_nova(get_fslist()[i])) {
@@ -132,6 +134,8 @@ void unmount_all(bool strict)
 #endif
     for (int i = 0; i < get_n_fs(); ++i) {
         if (is_verifs(get_fslist()[i]))
+            continue;
+        if (is_fuse_lwext4(get_fslist()[i]))
             continue;
 
         // Change retry limit from 20 to 19 to avoid excessive delay

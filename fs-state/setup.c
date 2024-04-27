@@ -18,15 +18,18 @@ static void execute_cmd(const char *cmd)
 {
     int retval = system(cmd);
     int status, signal = 0;
-    if ((status = WEXITSTATUS(retval)) != 0) {
+    if ((status = WEXITSTATUS(retval)) != 0)
+    {
         fprintf(stderr, "Command `%s` failed with %d.\n", cmd, status);
     }
-    if (WIFSIGNALED(retval)) {
+    if (WIFSIGNALED(retval))
+    {
         signal = WTERMSIG(retval);
         fprintf(stderr, "Command `%s` terminated with signal %d.\n", cmd,
                 signal);
     }
-    if (status || signal) {
+    if (status || signal)
+    {
         exit(1);
     }
 }
@@ -38,10 +41,11 @@ int execute_cmd_status(const char *cmd)
     return status;
 }
 
-static int is_mounted(const char *path) {
+static int is_mounted(const char *path)
+{
     char command[256];
     snprintf(command, sizeof(command), "mountpoint -q \"%s\"", path);
-    // Executes the command. 
+    // Executes the command.
     // If the directory is a mountpoint, the command returns 0, else non-zero.
     return system(command) == 0;
 }
@@ -50,32 +54,37 @@ static int check_device(const char *devname, const size_t exp_size_kb)
 {
     int fd = open(devname, O_RDONLY);
     struct stat devinfo;
-    if (fd < 0) {
+    if (fd < 0)
+    {
         fprintf(stderr, "Cannot open %s (err=%s, %d)\n",
                 devname, errnoname(errno), errno);
         return -errno;
     }
     int retval = fstat(fd, &devinfo);
-    if (retval < 0) {
+    if (retval < 0)
+    {
         fprintf(stderr, "Cannot stat %s (err=%s, %d)\n",
                 devname, errnoname(errno), errno);
         close(fd);
         return -errno;
     }
-    if (!S_ISBLK(devinfo.st_mode)) {
+    if (!S_ISBLK(devinfo.st_mode))
+    {
         fprintf(stderr, "%s is not a block device.\n", devname);
         close(fd);
         return -ENOTBLK;
     }
     size_t devsize = fsize(fd);
-    if (devsize < exp_size_kb * 1024) {
+    if (devsize < exp_size_kb * 1024)
+    {
         fprintf(stderr, "%s is smaller than expected (expected %zu KB, "
-                "got %zu).\n", devname, exp_size_kb, devsize / 1024);
+                        "got %zu).\n",
+                devname, exp_size_kb, devsize / 1024);
         close(fd);
         return -ENOSPC;
     }
     close(fd);
-    return 0; 
+    return 0;
 }
 
 static int setup_generic(const char *fsname, const char *devname, const size_t size_kb)
@@ -83,14 +92,15 @@ static int setup_generic(const char *fsname, const char *devname, const size_t s
     int ret;
     char cmdbuf[PATH_MAX];
     ret = check_device(devname, size_kb);
-    if (ret != 0) {
+    if (ret != 0)
+    {
         fprintf(stderr, "Cannot setup %s because %s is bad or not ready.\n",
                 fsname, devname);
         return ret;
     }
     // fill the device with zeros
     snprintf(cmdbuf, PATH_MAX,
-            "dd if=/dev/zero of=%s bs=1k count=%zu status=none",
+             "dd if=/dev/zero of=%s bs=1k count=%zu status=none",
              devname, size_kb);
     execute_cmd(cmdbuf);
     // format the device with the specified file system
@@ -171,14 +181,16 @@ static void populate_mountpoints()
     char check_mp_exist_cmdbuf[PATH_MAX];
     char rm_mp_cmdbuf[PATH_MAX];
     char mk_mp_cmdbuf[PATH_MAX];
-    for (int i = 0; i < get_n_fs(); ++i) {
-        snprintf(check_mount_cmdbuf, PATH_MAX, "mount | grep %s", get_basepaths()[i]);    
+    for (int i = 0; i < get_n_fs(); ++i)
+    {
+        snprintf(check_mount_cmdbuf, PATH_MAX, "mount | grep %s", get_basepaths()[i]);
         /* If the mountpoint has fs mounted, then unmount it */
-        if (execute_cmd_status(check_mount_cmdbuf) == 0) {
+        if (execute_cmd_status(check_mount_cmdbuf) == 0)
+        {
             snprintf(unmount_cmdbuf, PATH_MAX, "umount -f %s", get_basepaths()[i]);
             execute_cmd(unmount_cmdbuf);
         }
-        /* 
+        /*
          * Caveat: if we use file/dir pools and test in-memory file systems
          * like VeriFS, we should not remove the mount point here because
          * we need to pre-create files/dirs in the pool. Removing mountpoints
@@ -186,8 +198,8 @@ static void populate_mountpoints()
          *
          * Also, we cannot mount VeriFS and other in-memory file systems on
          * a non-empty mount point.
-         * 
-         * The correct way would be removing and recreating mount point of 
+         *
+         * The correct way would be removing and recreating mount point of
          * VeriFS in the setup shell scripts before running pan.
          */
 
@@ -328,7 +340,7 @@ static int setup_verifs1(int i)
 static int setup_verifs2(int i)
 {
     char cmdbuf[PATH_MAX];
-    char* mountpoint = get_basepaths()[i];
+    char *mountpoint = get_basepaths()[i];
     // Max 5 seconds
     const int MAX_WAIT_SECONDS = 5;
     const int MAX_WAIT_TIME = MAX_WAIT_SECONDS * 1000000;
@@ -337,48 +349,56 @@ static int setup_verifs2(int i)
     int total_time = 0;
     bool mounted = false;
 
-    if (is_mounted(mountpoint)) {
+    if (is_mounted(mountpoint))
+    {
         snprintf(cmdbuf, PATH_MAX, "umount \"%s\"", mountpoint);
-        
-        if (execute_cmd_status(cmdbuf) != 0) {
+
+        if (execute_cmd_status(cmdbuf) != 0)
+        {
             fprintf(stderr, "Failed to unmount an existing VeriFS2 file system.\n");
             return -1;
         }
     }
 
-    // Remove the mountpoint if it exists and create a new one to remove 
+    // Remove the mountpoint if it exists and create a new one to remove
     // all the content inside the mountpoint
-    if (strncmp(mountpoint, VERIFS2_MP_PREFIX, strlen(VERIFS2_MP_PREFIX)) == 0) {
+    if (strncmp(mountpoint, VERIFS2_MP_PREFIX, strlen(VERIFS2_MP_PREFIX)) == 0)
+    {
         snprintf(cmdbuf, PATH_MAX, "rm -rf %s", mountpoint);
 
-        if (execute_cmd_status(cmdbuf) != 0) {
+        if (execute_cmd_status(cmdbuf) != 0)
+        {
             fprintf(stderr, "Failed to remove content in the VeriFS2 mount point during setup.\n");
             return -2;
         }
 
-        if (mkdir(mountpoint, 0755) == -1) {
+        if (mkdir(mountpoint, 0755) == -1)
+        {
             fprintf(stderr, "Failed to create the VeriFS2 mount point.\n");
             return -3;
         }
     }
 
-    while (total_time < MAX_WAIT_TIME && !mounted) {
+    while (total_time < MAX_WAIT_TIME && !mounted)
+    {
         snprintf(cmdbuf, PATH_MAX, "mount -t fuse.fuse-cpp-ramfs verifs2 %s", mountpoint);
         execute_cmd(cmdbuf);
 
         usleep(wait_time);
 
-        if (is_mounted(mountpoint)) {
+        if (is_mounted(mountpoint))
+        {
             mounted = true;
             break;
         }
-        
+
         total_time += wait_time;
         // wait until next attempt is multiplied by 2, for similar reason to umount() in mount.c
-        wait_time = (wait_time > MAX_WAIT_TIME/2) ? MAX_WAIT_TIME : (wait_time * 2);
+        wait_time = (wait_time > MAX_WAIT_TIME / 2) ? MAX_WAIT_TIME : (wait_time * 2);
     }
 
-    if (!mounted){
+    if (!mounted)
+    {
         fprintf(stderr, "Cannot mount %s , did not setup in time.\n", mountpoint);
         return -4;
     }
@@ -389,7 +409,7 @@ static int setup_nova(const char *devname, const char *basepath, const size_t si
 {
     int ret;
     char cmdbuf[PATH_MAX];
-    //128MiB
+    // 128MiB
     ret = check_device(devname, 128 * 1024);
     if (ret != 0)
     {
@@ -405,12 +425,13 @@ static int setup_nova(const char *devname, const char *basepath, const size_t si
 
     snprintf(cmdbuf, PATH_MAX, "mount -t NOVA -o init %s %s", devname, basepath);
     ret = execute_cmd_status(cmdbuf);
-    if(ret!=0) {
+    if (ret != 0)
+    {
         fprintf(stderr, "Cannot %s because initial mount failed at device: %s\n",
                 __FUNCTION__, devname);
         return ret;
     }
-    ret = umount2(basepath, 0);    
+    ret = umount2(basepath, 0);
     return ret;
 }
 
@@ -435,6 +456,80 @@ static int setup_lwext4(const char *devname, const char *basepath, const size_t 
     snprintf(cmdbuf, PATH_MAX, "lwext4-mkfs --verbose -i %s -e 4", devname);
     execute_cmd(cmdbuf);
 
+    // Chmod of root (default mod of lwext4 root is 777)
+    // 1. mount
+    snprintf(cmdbuf, PATH_MAX, "mount %s %s", devname, basepath);
+    ret = execute_cmd_status(cmdbuf);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Cannot mount lwext4.\n");
+        return ret;
+    }
+    // 2. chmod
+    snprintf(cmdbuf, PATH_MAX, "chmod 755 %s", basepath);
+    ret = execute_cmd_status(cmdbuf);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Cannot chmod lwext4.\n");
+        return ret;
+    }
+    // 3. umount
+    snprintf(cmdbuf, PATH_MAX, "umount %s", basepath);
+    ret = execute_cmd_status(cmdbuf);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Cannot umount lwext4.\n");
+    }
+
+    return 0;
+}
+
+// Set up FUSE lwext4 filesystem
+static int setup_fuse_lwext4(const char *devname, const char *basepath, const size_t size_kb)
+{
+    // Make lwext4 fs
+    int ret = setup_lwext4(devname, basepath, size_kb);
+    if (ret != 0)
+    {
+        return ret;
+    }
+
+    // Mount FUSE
+    const char *mountpoint = basepath;
+    char cmdbuf[PATH_MAX];
+    // Max 5 seconds
+    const int MAX_WAIT_SECONDS = 5;
+    const int MAX_WAIT_TIME = MAX_WAIT_SECONDS * 1000000;
+    // wait until FUSE fs is fully setup at mountpoint (when st_dev or st_ino updates at the mountpoint)
+    int wait_time = 1000; // initial wait time, in microseconds.
+    int total_time = 0;
+    bool mounted = false;
+
+    while (total_time < MAX_WAIT_TIME && !mounted)
+    {
+        // Use `fuse-lwext4` command to mount FUSE
+        // lwext4 filesystem is built on `devname`, mount to `mountpoint` to start FUSE
+        snprintf(cmdbuf, PATH_MAX, "fuse-lwext4 %s %s", devname, mountpoint);
+        execute_cmd(cmdbuf);
+
+        usleep(wait_time);
+
+        if (is_mounted(mountpoint))
+        {
+            mounted = true;
+            break;
+        }
+
+        total_time += wait_time;
+        // wait until next attempt is multiplied by 2, for similar reason to umount() in mount.c
+        wait_time = (wait_time > MAX_WAIT_TIME / 2) ? MAX_WAIT_TIME : (wait_time * 2);
+    }
+
+    if (!mounted)
+    {
+        fprintf(stderr, "Cannot mount %s , did not setup in time.\n", mountpoint);
+        return -4;
+    }
     return 0;
 }
 
@@ -468,11 +563,11 @@ void setup_filesystems()
         {
             ret = setup_nilfs2(get_devlist()[i], get_devsize_kb()[i]);
         }
-         else if (strcmp(get_fslist()[i], "nova") == 0)
+        else if (strcmp(get_fslist()[i], "nova") == 0)
         {
             ret = setup_nova(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
         }
-         else if (strcmp(get_fslist()[i], "lwext4") == 0)
+        else if (strcmp(get_fslist()[i], "lwext4") == 0)
         {
             ret = setup_lwext4(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
         }
@@ -491,6 +586,11 @@ void setup_filesystems()
                 break;
             }
         }
+        // custom FUSE filesystem
+        else if (is_fuse_lwext4(get_fslist()[i]))
+        {
+            ret = setup_fuse_lwext4(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
+        }
         else
         {
             ret = setup_generic(get_fslist()[i], get_devlist()[i], get_devsize_kb()[i]);
@@ -508,30 +608,35 @@ int mkdir_p(const char *path, mode_t dir_mode, mode_t file_mode)
 {
     const size_t len = strlen(path);
     char _path[PATH_MAX];
-    char *p; 
+    char *p;
 
     errno = 0;
 
     /* Copy string so its mutable */
-    if (len > sizeof(_path)-1) {
+    if (len > sizeof(_path) - 1)
+    {
         errno = ENAMETOOLONG;
-        return -1; 
-    }   
+        return -1;
+    }
     strcpy(_path, path);
 
     bool next_f = false;
     bool next_d = false;
     /* Iterate the string */
-    for (p = _path + 1; *p; p++) {
-        if (*p == '/') {
+    for (p = _path + 1; *p; p++)
+    {
+        if (*p == '/')
+        {
             /* Temporarily truncate */
             *p = '\0';
-            if (mkdir(_path, dir_mode) != 0) {
-                if (errno != EEXIST) {
-                    return -1; 
+            if (mkdir(_path, dir_mode) != 0)
+            {
+                if (errno != EEXIST)
+                {
+                    return -1;
                 }
             }
-            
+
             *p = '/';
 
             if (*(p + 1) == 'f')
@@ -540,19 +645,25 @@ int mkdir_p(const char *path, mode_t dir_mode, mode_t file_mode)
                 next_d = true;
         }
     }
-    if (next_f) {
+    if (next_f)
+    {
         int fd = creat(_path, file_mode);
-        if (fd >= 0) {
+        if (fd >= 0)
+        {
             close(fd);
         }
-        else if (errno != EEXIST) {
+        else if (errno != EEXIST)
+        {
             return -1;
         }
     }
-    if (next_d) {
-        if (mkdir(_path, dir_mode) != 0) {
-            if (errno != EEXIST) {
-                return -1; 
+    if (next_d)
+    {
+        if (mkdir(_path, dir_mode) != 0)
+        {
+            if (errno != EEXIST)
+            {
+                return -1;
             }
         }
     }

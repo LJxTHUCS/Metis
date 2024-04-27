@@ -45,7 +45,8 @@ generic_cleanup() {
         for i in $(seq 0 $(($n_fs-1))); do
             fs=${FSLIST[$i]};
             if [ "$(mount | grep /mnt/test-$fs-i$i-s$SWARM_ID)" ]; then
-                umount -f /mnt/test-$fs-i$i-s$SWARM_ID;
+                sudo umount -f /mnt/test-$fs-i$i-s$SWARM_ID;
+                sudo rm -rf /mnt/test-$fs-i$i-s$SWARM_ID;
             fi
         done
 
@@ -81,6 +82,58 @@ runcmd() {
 }
 
 runcmd losetup -D
+
+# Parse command line options
+while [[ $# -gt 0 ]]; do
+    key=$1;
+    case $key in
+        -a|--abort-on-discrepancy)
+            _CFLAGS="-DABORT_ON_FAIL=1";
+            shift
+            ;;
+        -c|--clean-after-exp)
+            CLEAN_AFTER_EXP=1
+            shift
+            ;;
+        -k|--keep-fs)
+            KEEP_FS=1
+            shift
+            ;;
+        -v|--verbose)
+            verbose=1
+            shift
+            ;;
+        -s|--setup-only)
+            KEEP_FS=1
+            SETUP_ONLY=1
+            shift
+            ;;
+        -r|--replay)
+            REPLAY=1
+            SETUP_ONLY=1
+            KEEP_FS=1
+            shift
+            ;;
+        -m|--mount-all)
+            mount_all $SWARM_ID;
+            exit 0;
+            shift
+            ;;
+        -f|--fslist)
+            MCFSLIST="$2"
+            shift
+            shift
+            ;;
+        -e|--use-env)
+            USE_ENV_VAR=1
+            shift
+            ;;
+        *)
+            POSITIONAL+=("$1")
+            shift
+            ;;
+    esac
+done
 
 # Setup mount points and each file system
 for i in $(seq 0 $(($n_fs-1))); do
@@ -129,6 +182,7 @@ fi
 if [ "$SETUP_ONLY" != "1" ]; then
     runcmd make CFLAGS=$_CFLAGS;
     mv *.o *.a pan* bin;
+    echo "Test file systems: $MCFSLIST";
     echo 'Running file system checker...';
     echo 'Please check stdout in output.log, stderr in error.log';
     # Set environment variable MCFS_FSLIST for MCFS C Sources
@@ -136,7 +190,7 @@ if [ "$SETUP_ONLY" != "1" ]; then
         export MCFS_FSLIST$SWARM_ID="$MCFSLIST"
         ./bin/pan -K $SWARM_ID 2>./log/error.log > ./log/output.log
     else
-        ./bin/pan -m10000 -K $SWARM_ID:$MCFSLIST 2>./log/error.log > ./log/output.log
+        ./bin/pan -m30 -K $SWARM_ID:$MCFSLIST 2>./log/error.log > ./log/output.log
     fi
 
     # By default we don't want to clean up the file system for 
