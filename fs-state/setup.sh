@@ -13,6 +13,10 @@
 
 # Standalong setup script without using swarm
 
+# TODO: Temp FSLIST
+n_fs=2;
+FSLIST=(ext4_fuse verifs2);
+
 FSLIST=()
 DEVSIZE_KB=()
 DEVLIST=()
@@ -21,7 +25,7 @@ MCFSLIST=""
 USE_ENV_VAR=0
 
 LOOPDEVS=()
-verbose=0
+verbose=1
 POSITIONAL=()
 _CFLAGS=""
 KEEP_FS=0
@@ -57,7 +61,7 @@ generic_cleanup() {
         done
 
         for fs in ${FSLIST[@]}; do
-            # Do not need to unset VeriFS
+            # Do not need to unset VeriFS and
             if [ "${fs:0:${VERI_PREFIX_LEN}}" != "$VERIFS_PREFIX" ]; then
                 unset_$fs;
             fi
@@ -79,6 +83,10 @@ runcmd() {
         generic_cleanup $n_fs $SWARM_ID;
         exit $ret;
     fi
+}
+
+unset_ext4_fuse() {
+    :
 }
 
 runcmd losetup -D
@@ -121,6 +129,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--fslist)
             MCFSLIST="$2"
+            FSLIST=
             shift
             shift
             ;;
@@ -139,8 +148,6 @@ done
 for i in $(seq 0 $(($n_fs-1))); do
     # Run individual file system setup scripts defined above
     fs=${FSLIST[$i]};
-    DEVICE=${DEVLIST[$i]};
-    DEVSZKB=${DEVSIZE_KB[$i]};
     # Do not need to set up VeriFS
     if [ "${fs:0:${VERI_PREFIX_LEN}}" != "$VERIFS_PREFIX" ]; then
         # Unmount first
@@ -190,7 +197,7 @@ if [ "$SETUP_ONLY" != "1" ]; then
         export MCFS_FSLIST$SWARM_ID="$MCFSLIST"
         ./bin/pan -K $SWARM_ID 2>./log/error.log > ./log/output.log
     else
-        ./bin/pan -m30 -K $SWARM_ID:$MCFSLIST 2>./log/error.log > ./log/output.log
+        ./bin/pan -m50 -K $SWARM_ID:$MCFSLIST 2>./log/error.log > ./log/output.log
     fi
 
     # By default we don't want to clean up the file system for 

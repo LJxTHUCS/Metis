@@ -435,101 +435,55 @@ static int setup_nova(const char *devname, const char *basepath, const size_t si
     return ret;
 }
 
-static int setup_lwext4(const char *devname, const char *basepath, const size_t size_kb)
+// Set up FUSE filesystem
+static int setup_fuse_fs(const char *devname, const char *basepath, const size_t size_kb)
 {
-    int ret;
-    char cmdbuf[PATH_MAX];
-    // Expected >= 256 KiB
-    ret = check_device(devname, 256);
-    if (ret != 0)
-    {
-        fprintf(stderr, "Cannot %s because %s is bad or not ready.\n",
-                __FUNCTION__, devname);
-        return ret;
-    }
-    // fill the device with zeros
-    snprintf(cmdbuf, PATH_MAX,
-             "dd if=/dev/zero of=%s bs=%zu count=1",
-             devname, size_kb * 1024);
-    execute_cmd(cmdbuf);
-    // format the device with the specified file system
-    snprintf(cmdbuf, PATH_MAX, "lwext4-mkfs --verbose -i %s -e 4", devname);
-    execute_cmd(cmdbuf);
-
-    // Chmod of root (default mod of lwext4 root is 777)
-    // 1. mount
-    snprintf(cmdbuf, PATH_MAX, "mount %s %s", devname, basepath);
-    ret = execute_cmd_status(cmdbuf);
-    if (ret != 0)
-    {
-        fprintf(stderr, "Cannot mount lwext4.\n");
-        return ret;
-    }
-    // 2. chmod
-    snprintf(cmdbuf, PATH_MAX, "chmod 755 %s", basepath);
-    ret = execute_cmd_status(cmdbuf);
-    if (ret != 0)
-    {
-        fprintf(stderr, "Cannot chmod lwext4.\n");
-        return ret;
-    }
-    // 3. umount
-    snprintf(cmdbuf, PATH_MAX, "umount %s", basepath);
-    ret = execute_cmd_status(cmdbuf);
-    if (ret != 0)
-    {
-        fprintf(stderr, "Cannot umount lwext4.\n");
-    }
-
-    return 0;
-}
-
-// Set up FUSE lwext4 filesystem
-static int setup_fuse_lwext4(const char *devname, const char *basepath, const size_t size_kb)
-{
-    // Make lwext4 fs
-    int ret = setup_lwext4(devname, basepath, size_kb);
-    if (ret != 0)
-    {
-        return ret;
-    }
-
     // Mount FUSE
     const char *mountpoint = basepath;
     char cmdbuf[PATH_MAX];
-    // Max 5 seconds
-    const int MAX_WAIT_SECONDS = 5;
-    const int MAX_WAIT_TIME = MAX_WAIT_SECONDS * 1000000;
-    // wait until FUSE fs is fully setup at mountpoint (when st_dev or st_ino updates at the mountpoint)
-    int wait_time = 1000; // initial wait time, in microseconds.
-    int total_time = 0;
-    bool mounted = false;
 
-    while (total_time < MAX_WAIT_TIME && !mounted)
-    {
-        // Use `fuse-lwext4` command to mount FUSE
-        // lwext4 filesystem is built on `devname`, mount to `mountpoint` to start FUSE
-        snprintf(cmdbuf, PATH_MAX, "fuse-lwext4 %s %s", devname, mountpoint);
+    // CUSTOM FUSE: Use custom command to run and mount FUSE fs
+    snprintf(cmdbuf, PATH_MAX, "%s -m %s", FUSE_FS_PATH, mountpoint);
+
+    pid_t pid = fork();
+    if (pid == 0)
+    {   
+        freopen("fuse.log", "w", stdout);
         execute_cmd(cmdbuf);
-
-        usleep(wait_time);
-
-        if (is_mounted(mountpoint))
-        {
-            mounted = true;
-            break;
-        }
-
-        total_time += wait_time;
-        // wait until next attempt is multiplied by 2, for similar reason to umount() in mount.c
-        wait_time = (wait_time > MAX_WAIT_TIME / 2) ? MAX_WAIT_TIME : (wait_time * 2);
+        exit(0);
     }
 
-    if (!mounted)
+    sleep(2);
+
+    // while (total_time < MAX_WAIT_TIME && !mounted)
+    // {
+    //     
+    //     snprintf(cmdbuf, PATH_MAX, "%s -m %s", FUSE_FS_PATH, mountpoint);
+
+    //     pid_t pid = fork();
+    //     if (pid == 0) {
+    //         execute_cmd(cmdbuf);
+    //         exit(0);
+    //     }
+    //     usleep(wait_time);
+
+    //     if (is_mounted(mountpoint))
+    //     {
+    //         mounted = true;
+    //         break;
+    //     }
+
+    //     total_time += wait_time;
+    //     // wait until next attempt is multiplied by 2, for similar reason to umount() in mount.c
+    //     wait_time = (wait_time > MAX_WAIT_TIME / 2) ? MAX_WAIT_TIME : (wait_time * 2);
+    // }
+
+    if (!is_mounted(mountpoint))
     {
         fprintf(stderr, "Cannot mount %s , did not setup in time.\n", mountpoint);
         return -4;
     }
+
     return 0;
 }
 
@@ -567,10 +521,6 @@ void setup_filesystems()
         {
             ret = setup_nova(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
         }
-        else if (strcmp(get_fslist()[i], "lwext4") == 0)
-        {
-            ret = setup_lwext4(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
-        }
         // TODO: we need to consider VeriFS1 and VeriFS2 separately here
         else if (is_verifs(get_fslist()[i]))
         {
@@ -587,9 +537,9 @@ void setup_filesystems()
             }
         }
         // custom FUSE filesystem
-        else if (is_fuse_lwext4(get_fslist()[i]))
+        else if (is_fuse_fs(get_fslist()[i]))
         {
-            ret = setup_fuse_lwext4(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
+            ret = setup_fuse_fs(get_devlist()[i], get_basepaths()[i], get_devsize_kb()[i]);
         }
         else
         {

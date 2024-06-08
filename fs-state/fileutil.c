@@ -622,6 +622,46 @@ static int restore_verifs(size_t key, const char *mp)
     return ret;
 }
 
+/* `checkpoint` and `restore` are provided for FUSE fs with state self-management */
+#define FUSE_FS_CHECKPOINT 1
+#define FUSE_FS_RESTORE 2
+
+static int checkpoint_fuse_fs(size_t key, const char *mp)
+{
+    int mpfd = open(mp, O_RDONLY | __O_DIRECTORY);
+    if (mpfd < 0) {
+        logerr("Cannot open mountpoint %s", mp);
+        return errno;
+    }
+
+    int ret = ioctl(mpfd, FUSE_FS_CHECKPOINT, key);
+    if (ret < 0) {
+        logerr("Cannot perform checkpoint at %s", mp);
+        ret = errno;
+    }
+    close(mpfd);
+    return ret;
+}
+
+static int restore_fuse_fs(size_t key, const char *mp)
+{
+    int mpfd = open(mp, O_RDONLY | __O_DIRECTORY);
+    if (mpfd < 0) {
+        logerr("Cannot open mountpoint %s", mp);
+        return errno;
+    }
+
+    int ret = ioctl(mpfd, FUSE_FS_RESTORE, key);
+    if (ret < 0) {
+        logerr("Cannot perform restore at %s with key %zu", mp, key);
+        ret = errno;
+    }
+
+    close(mpfd);
+    return ret;
+}
+
+
 static size_t state_depth = 0;
 
 /*
@@ -635,19 +675,32 @@ static long checkpoint_before_hook(unsigned char *ptr)
     mmap_devices(IS_CHECKPOINT);
 
 #ifdef CBUF_IMAGE
-    for (int i = 0; i < get_n_fs(); ++i) {
+    for (int i = 0; i < get_n_fs(); ++i)
+    {
         insert_circular_buf(fsimg_bufs, i, get_devsize_kb()[i], get_fsimgs()[i],
-            state_depth, count, IS_CHECKPOINT);
+                            state_depth, count, IS_CHECKPOINT);
     }
 #endif
 
-    for (int i = 0; i < get_n_fs(); ++i) {
-        if (!is_verifs(get_fslist()[i]))
-            continue;
-        int res = checkpoint_verifs(state_depth, get_basepaths()[i]); 
-        if (res != 0) {
-            logerr("Failed to checkpoint a verifiable file system %s.",
-                   get_fslist()[i]);
+    for (int i = 0; i < get_n_fs(); ++i)
+    {
+        if (is_verifs(get_fslist()[i]))
+        {
+            int res = checkpoint_verifs(state_depth, get_basepaths()[i]);
+            if (res != 0)
+            {
+                logerr("Failed to checkpoint a verifiable file system %s.",
+                       get_fslist()[i]);
+            }
+        }
+        else if (is_fuse_fs(get_fslist()[i]))
+        {
+            int res = checkpoint_fuse_fs(state_depth, get_basepaths()[i]);
+            if (res != 0)
+            {
+                logerr("Failed to checkpoint a fuse file system %s.",
+                       get_fslist()[i]);
+            }
         }
     }
     state_depth++;
@@ -672,19 +725,31 @@ static long checkpoint_after_hook(unsigned char *ptr)
 static long restore_before_hook(unsigned char *ptr)
 {
     state_depth--;
-    
+
     submit_seq("restore\n");
     makelog("[seqid = %d] restore (%zu)\n", count, state_depth);
 
     mmap_devices(IS_SNAPSHOT);
 
-    for (int i = 0; i < get_n_fs(); ++i) {
-        if (!is_verifs(get_fslist()[i]))
-            continue;
-        int res = restore_verifs(state_depth, get_basepaths()[i]);
-        if (res != 0) {
-            logerr("Failed to restore a verifiable file system %s.",
-                    get_fslist()[i]);
+    for (int i = 0; i < get_n_fs(); ++i)
+    {
+        if (is_verifs(get_fslist()[i]))
+        {
+            int res = restore_verifs(state_depth, get_basepaths()[i]);
+            if (res != 0)
+            {
+                logerr("Failed to restore a verifiable file system %s.",
+                       get_fslist()[i]);
+            }
+        }
+        else if (is_fuse_fs(get_fslist()[i]))
+        {
+            int res = restore_fuse_fs(state_depth, get_basepaths()[i]);
+            if (res != 0)
+            {
+                logerr("Failed to restore a fuse file system %s.",
+                       get_fslist()[i]);
+            }
         }
     }
 

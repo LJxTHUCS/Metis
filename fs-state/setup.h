@@ -52,8 +52,8 @@
 #define XFS_NAME            "xfs"
 #define VERIFS1_NAME        "verifs1"
 #define NILFS2_NAME         "nilfs2"
-#define LWEXT4_NAME         "lwext4"
-#define FUSE_LWEXT4_NAME    "fuse_lwext4"
+#define FUSE_FS_NAME        "ext4_fuse"
+#define FUSE_FS_PATH        "/home/liujingx/os/biglab/ext4_rust/ext4_rs/ext4_fuse/target/debug/ext4_fuse"
 #define VERIFS_PREFIX_LEN   (sizeof(VERIFS_PREFIX) - 1)
 
 static inline bool is_verifs(const char *fsname)
@@ -66,14 +66,9 @@ static inline bool is_nova(const char *fsname)
     return strcmp(fsname, NOVA_NAME) == 0;
 }
 
-static inline bool is_lwext4(const char *fsname)
+static inline bool is_fuse_fs(const char *fsname)
 {
-    return strcmp(fsname, LWEXT4_NAME) == 0;
-}
-
-static inline bool is_fuse_lwext4(const char *fsname)
-{
-    return strcmp(fsname, FUSE_LWEXT4_NAME) == 0;
+    return strcmp(fsname, FUSE_FS_NAME) == 0;
 }
 
 void setup_filesystems();

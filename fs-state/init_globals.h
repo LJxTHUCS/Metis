@@ -48,15 +48,16 @@ typedef struct all_dev_nums {
     int all_pmems;
 } dev_nums_t;
 
+// CUSTOM FUSE: Define the file system name and its device type
 static const char *fs_all[] = {"btrfs", "ext2", "ext4", "f2fs", 
                                "jffs2", "ramfs", "tmpfs", "verifs1", 
                                "verifs2", "xfs", "nilfs2", "jfs",
-                               "nova", "lwext4", "fuse_lwext4"};
+                               "nova", "ext4_fuse"};
                                
 static const char *dev_all[]= {"ram", "ram", "ram", "ram", 
                                 "mtdblock", "", "", "", 
                                 "", "ram", "ram", "ram",
-                                "pmem", "ram", "ram"};
+                                "pmem", ""};
 #define ALL_FS nelem(fs_all)
 
 static inline int get_dev_from_fs(char *fs_type) {
