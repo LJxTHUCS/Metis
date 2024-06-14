@@ -368,8 +368,8 @@ proctype worker()
                 makelog("END: link\n");
             }
     };
-    :: atomic {
-        /* symlink: run it only if the complex ops option enabled */
+
+    /* :: atomic {
         c_expr {enable_complex_ops} ->
             c_code {
                 makelog("BEGIN: symlink\n");
@@ -389,7 +389,8 @@ proctype worker()
                 unmount_all_strict();
                 makelog("END: symlink\n");
             }
-    };
+    }; */
+
     od
 };
 

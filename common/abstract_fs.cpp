@@ -264,6 +264,11 @@ void AbstractFile::FeedHasher(absfs_t *absfs) {
     if (!S_ISREG(attrs.mode)) {
         attrs.size = 0;
     }
+    size_t nlink = attrs.nlink;
+    if (strcmp(abspath, "/") == 0) {
+        // Ignore the root directory's nlink for ext4.
+        attrs.nlink = 0;
+    }
 
     switch (absfs->hash_option) {
         case xxh128_t: {
@@ -299,6 +304,7 @@ void AbstractFile::FeedHasher(absfs_t *absfs) {
 
     /* Assign value back after use */
     attrs.size = fsize;
+    attrs.nlink = nlink;
 }
 
 /**

@@ -53,7 +53,7 @@
 #define VERIFS1_NAME        "verifs1"
 #define NILFS2_NAME         "nilfs2"
 #define FUSE_FS_NAME        "ext4_fuse"
-#define FUSE_FS_PATH        "/home/liujingx/os/biglab/ext4_rust/ext4_rs/ext4_fuse/target/debug/ext4_fuse"
+#define FUSE_FS_PATH        "/home/liujingx/os/biglab/ext4_rust/ext4_rs/ext4_fuse/target/release/ext4_fuse"
 #define VERIFS_PREFIX_LEN   (sizeof(VERIFS_PREFIX) - 1)
 
 static inline bool is_verifs(const char *fsname)
